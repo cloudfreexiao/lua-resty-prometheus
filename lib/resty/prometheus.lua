@@ -48,13 +48,20 @@ local string = string
 local ngx = ngx
 local table = table
 local tab_clear = require("table.clear")
+local select = select
 
     local tab_tmp = {}
 local function init_tmp_tab(...)
+    local cnt = select('#', ...)
+    if cnt == 0 then
+      return nil
+    end
+
     tab_clear(tab_tmp)
-    for i = 1, select('#', ...) do
+    for i = 1, cnt do
         tab_tmp[i] = select(i, ...)
     end
+
     return tab_tmp
 end
 
@@ -81,19 +88,25 @@ end
 function Metric:check_label_values(label_values)
   if self.label_names == nil and label_values == nil then
     return
-  elseif self.label_names == nil and label_values ~= nil then
+  end
+
+  if self.label_names == nil and label_values ~= nil then
     return "Expected no labels for " .. self.name .. ", got " ..  #label_values
-  elseif label_values == nil and self.label_names ~= nil then
+  end
+
+  if label_values == nil and self.label_names ~= nil then
     return "Expected " .. #self.label_names .. " labels for " ..
            self.name .. ", got none"
-  elseif #self.label_names ~= #label_values then
+  end
+
+  if #self.label_names ~= #label_values then
     return "Wrong number of labels for " .. self.name .. ". Expected " ..
            #self.label_names .. ", got " .. #label_values
-  else
-    for i, k in ipairs(self.label_names) do
-      if label_values[i] == nil then
-        return "Unexpected nil value for label " .. k ..  " of " .. self.name
-      end
+  end
+
+  for i, k in ipairs(self.label_names) do
+    if label_values[i] == nil then
+      return "Unexpected nil value for label " .. k ..  " of " .. self.name
     end
   end
 end
@@ -112,6 +125,7 @@ function Counter:inc(value, ...)
     self.prometheus:log_error(err)
     return
   end
+
   if value ~= nil and value < 0 then
     self.prometheus:log_error_kv(self.name, value,
                                  "Value should not be negative")
@@ -133,6 +147,7 @@ function Counter:del(...)
     self.prometheus:log_error(err)
     return
   end
+
   self.prometheus:set(self.name, self.label_names, label_values, nil)
 end
 
@@ -156,11 +171,13 @@ function Gauge:set(value, ...)
     self.prometheus:log_error("No value passed for " .. self.name)
     return
   end
+
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)
     return
   end
+
   self.prometheus:set(self.name, self.label_names, label_values, value)
 end
 
@@ -176,6 +193,7 @@ function Gauge:del(...)
     self.prometheus:log_error(err)
     return
   end
+
   self.prometheus:set(self.name, self.label_names, label_values, nil)
 end
 

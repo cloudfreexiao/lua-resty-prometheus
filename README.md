@@ -1,5 +1,4 @@
-[![Build Status](https://secure.travis-ci.org/knyar/nginx-lua-prometheus.svg?branch=master)](http://travis-ci.org/knyar/nginx-lua-prometheus?branch=master)
-[![Coverage Status](https://coveralls.io/repos/github/knyar/nginx-lua-prometheus/badge.svg?branch=master)](https://coveralls.io/github/knyar/nginx-lua-prometheus?branch=master)
+[![Build Status](https://secure.travis-ci.org/iresty/lua-resty-prometheus.svg?branch=master)](http://travis-ci.org/iresty/lua-resty-prometheus?branch=master)
 
 # Prometheus metric library for Nginx
 
@@ -9,15 +8,13 @@ expose them on a separate web page to be pulled by
 
 ## Installation
 
-You need to install nginx package with lua support (`libnginx-mod-http-lua` on
-newer Debian versions, or `nginx-extras` on older ones). The library file,
+You need to install nginx package with lua support. The library file,
 `prometheus.lua`, needs to be available in `LUA_PATH`. If this is the only Lua
 library you use, you can just point `lua_package_path` to the directory with
 this git repo checked out (see example below).
 
-OpenResty users will find this library in [opm](https://opm.openresty.org/). It
-is also available via
-[luarocks](https://luarocks.org/modules/knyar/nginx-lua-prometheus).
+It is available via
+[luarocks](https://luarocks.org/modules/membphis/iresty-nginx-lua-prometheus).
 
 ## Quick start guide
 
@@ -27,9 +24,9 @@ of `nginx.conf`:
 
 ```
 lua_shared_dict prometheus_metrics 10M;
-lua_package_path "/path/to/nginx-lua-prometheus/?.lua";
+lua_package_path "/path/to/nginx-lua-prometheus/lib/?.lua";
 init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
   metric_requests = prometheus:counter(
     "nginx_http_requests_total", "Number of HTTP requests", {"host", "status"})
   metric_latency = prometheus:histogram(
@@ -92,7 +89,7 @@ to the beginning of `nginx.conf` to ensure the modules are loaded.
 
 ### init()
 
-**syntax:** require("prometheus").init(*dict_name*, [*prefix*])
+**syntax:** require("resty.prometheus").init(*dict_name*, [*prefix*])
 
 Initializes the module. This should be called once from the
 [init_by_lua](https://github.com/openresty/lua-nginx-module#init_by_lua)
@@ -108,7 +105,7 @@ Returns a `prometheus` object that should be used to register metrics.
 Example:
 ```
 init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
 ';
 ```
 
@@ -133,13 +130,13 @@ Returns a `counter` object that can later be incremented.
 
 Example:
 ```
-init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+init_by_lua_block {
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
   metric_bytes = prometheus:counter(
     "nginx_http_request_size_bytes", "Total size of incoming requests")
   metric_requests = prometheus:counter(
     "nginx_http_requests_total", "Number of HTTP requests", {"host", "status"})
-';
+}
 ```
 
 ### prometheus:gauge()
@@ -161,7 +158,7 @@ Returns a `gauge` object that can later be set.
 Example:
 ```
 init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
   metric_connections = prometheus:gauge(
     "nginx_http_connections", "Number of HTTP connections", {"state"})
 ';
@@ -187,7 +184,7 @@ Returns a `histogram` object that can later be used to record samples.
 Example:
 ```
 init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
   metric_latency = prometheus:histogram(
     "nginx_http_request_duration_seconds", "HTTP request latency", {"host"})
   metric_response_sizes = prometheus:histogram(
@@ -222,14 +219,14 @@ Returns metric data as an array of strings.
 
 ### counter:inc()
 
-**syntax:** counter:inc(*value*, *label_values*)
+**syntax:** counter:inc(*value*, ...)
 
 Increments a previously registered counter. This is usually called from
 [log_by_lua](https://github.com/openresty/lua-nginx-module#log_by_lua)
 globally or per server/location.
 
 * `value` is a value that should be added to the counter. Defaults to 1.
-* `label_values` is an array of label values.
+* `...` label values.
 
 The number of label values should match the number of label names defined when
 the counter was registered using `prometheus:counter()`. No label values should
@@ -240,21 +237,21 @@ Example:
 ```
 log_by_lua '
   metric_bytes:inc(tonumber(ngx.var.request_length))
-  metric_requests:inc(1, {ngx.var.server_name, ngx.var.status})
+  metric_requests:inc(1, ngx.var.server_name, ngx.var.status)
 ';
 ```
 
 ### counter:del()
 
-**syntax:** counter:del(*label_values*)
+**syntax:** counter:del(...)
 
-Delete a previously registered counter. This is usually called when you don't 
-need to observe such counter (or a metric with specific label values in this 
-counter) any more. If this counter has labels, you have to pass `label_values` 
-to delete the specific metric of this counter. If you want to delete all the 
+Delete a previously registered counter. This is usually called when you don't
+need to observe such counter (or a metric with specific label values in this
+counter) any more. If this counter has labels, you have to pass `...`
+to delete the specific metric of this counter. If you want to delete all the
 metrics of a counter with labels, you should call `Counter:reset()`.
 
-* `label_values` is an array of label values.
+* `...` label values.
 
 The number of label values should match the number of label names defined when
 the counter was registered using `prometheus:counter()`. No label values should
@@ -265,13 +262,13 @@ stripped from label values.
 
 **syntax:** counter:reset()
 
-Delete all metrics for a previously registered counter. If this counter have no 
-labels, it is just the same as `Counter:del()` function. If this counter have labels, 
+Delete all metrics for a previously registered counter. If this counter have no
+labels, it is just the same as `Counter:del()` function. If this counter have labels,
 it will delete all the metrics with different label values.
 
 ### gauge:set()
 
-**syntax:** gauge:set(*value*, *label_values*)
+**syntax:** gauge:set(*value*, ...)
 
 Sets the current value of a previously registered gauge. This could be called
 from [log_by_lua](https://github.com/openresty/lua-nginx-module#log_by_lua)
@@ -280,19 +277,19 @@ globally or per server/location to modify a gauge on each request, or from
 just before `prometheus::collect()` to return a real-time value.
 
 * `value` is a value that the gauge should be set to. Required.
-* `label_values` is an array of label values.
+* `...` label values.
 
 ### gauge:inc()
 
-**syntax:** gauge:inc(*value*, *label_values*)
+**syntax:** gauge:inc(*value*, ...)
 
-Increments or decrements a previously registered gauge. This is usually called 
-when you want to observe the real-time value of a metric that can both be 
+Increments or decrements a previously registered gauge. This is usually called
+when you want to observe the real-time value of a metric that can both be
 increased and decreased.
 
-* `value` is a value that should be added to the gauge. It could be a negative 
+* `value` is a value that should be added to the gauge. It could be a negative
 value when you need to decrease the value of the gauge. Defaults to 1.
-* `label_values` is an array of label values.
+* `...` label values.
 
 The number of label values should match the number of label names defined when
 the gauge was registered using `prometheus:gauge()`. No label values should
@@ -301,15 +298,15 @@ stripped from label values.
 
 ### gauge:del()
 
-**syntax:** gauge:del(*label_values*)
+**syntax:** gauge:del(...)
 
-Delete a previously registered gauge. This is usually called when you don't 
-need to observe such gauge (or a metric with specific label values in this 
-gauge) any more. If this gauge has labels, you have to pass `label_values` 
-to delete the specific metric of this gauge. If you want to delete all the 
+Delete a previously registered gauge. This is usually called when you don't
+need to observe such gauge (or a metric with specific label values in this
+gauge) any more. If this gauge has labels, you have to pass `...`
+to delete the specific metric of this gauge. If you want to delete all the
 metrics of a gauge with labels, you should call `Gauge:reset()`.
 
-* `label_values` is an array of label values.
+* `...` label values.
 
 The number of label values should match the number of label names defined when
 the gauge was registered using `prometheus:gauge()`. No label values should
@@ -320,25 +317,25 @@ stripped from label values.
 
 **syntax:** gauge:reset()
 
-Delete all metrics for a previously registered gauge. If this gauge have no 
-labels, it is just the same as `Gauge:del()` function. If this gauge have labels, 
+Delete all metrics for a previously registered gauge. If this gauge have no
+labels, it is just the same as `Gauge:del()` function. If this gauge have labels,
 it will delete all the metrics with different label values.
 
 ### histogram:observe()
 
-**syntax:** histogram:observe(*value*, *label_values*)
+**syntax:** histogram:observe(*value*, ...)
 
 Records a value in a previously registered histogram. Usually called from
 [log_by_lua](https://github.com/openresty/lua-nginx-module#log_by_lua)
 globally or per server/location.
 
 * `value` is a value that should be recorded. Required.
-* `label_values` is an array of label values.
+* `...` label values.
 
 Example:
 ```
 log_by_lua '
-  metric_latency:observe(tonumber(ngx.var.request_time), {ngx.var.server_name})
+  metric_latency:observe(tonumber(ngx.var.request_time), ngx.var.server_name)
   metric_response_sizes:observe(tonumber(ngx.var.bytes_sent))
 ';
 ```
@@ -394,24 +391,9 @@ server {
 
 ## Development
 
-### Install dependencies for testing
-
-- `luarocks install luacheck`
-- `luarocks install luaunit`
-
 ### Run tests
 
-- `luacheck --globals ngx -- prometheus.lua`
-- `lua prometheus_test.lua`
-
-### Releasing new version
-
-- update version in the `dist.ini`
-- rename `.rockspec` file and update version inside it
-- commit changes
-- push to luarocks: `luarocks upload nginx-lua-prometheus-0.20181120-1.rockspec`
-- upload to OPM: `opm build && opm upload`
-- create a new Git tag: `git tag 0.XXXXXXXX-X && git push origin 0.XXXXXXXX-X`
+- `make test`
 
 ## Credits
 

@@ -5,14 +5,15 @@ workers(1);
 no_shuffle();
 
 my $pwd = cwd();
+my $lua_path = `lua -e "print(package.path)"`;
 
 our $HttpConfig = qq{
-    lua_package_path "$pwd/?.lua;$pwd/deps/share/lua/5.1/?.lua;;";
+    lua_package_path "$pwd/lib/?.lua;$lua_path;;";
     lua_shared_dict metrics 8m;
 
     init_by_lua_block {
         luaunit = require('luaunit')
-        prometheus = require('prometheus')
+        prometheus = require('resty.prometheus')
         dict = ngx.shared.metrics
     }
 };

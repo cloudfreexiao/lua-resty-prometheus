@@ -1,6 +1,6 @@
 -- vim: ts=2:sw=2:sts=2:expandtab
 luaunit = require('luaunit')
-prometheus = require('prometheus')
+prometheus = require('resty.prometheus')
 
 -- Simple implementation of a nginx shared dictionary
 local SimpleDict = {}

@@ -47,6 +47,16 @@ local math = math
 local string = string
 local ngx = ngx
 local table = table
+local tab_clear = require("table.clear")
+
+    local tab_tmp = {}
+local function init_tmp_tab(...)
+    tab_clear(tab_tmp)
+    for i = 1, select('#', ...) do
+        tab_tmp[i] = select(i, ...)
+    end
+    return tab_tmp
+end
 
 -- Default set of latency buckets, 5ms to 10s:
 local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
@@ -93,9 +103,10 @@ local Counter = Metric:new()
 --
 -- Args:
 --   value: (number) a value to add to the counter. Defaults to 1 if skipped.
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Counter:inc(value, label_values)
+function Counter:inc(value, ...)
+  local label_values = init_tmp_tab(...)
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)
@@ -113,9 +124,10 @@ end
 -- Delete a given counter
 --
 -- Args:
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Counter:del(label_values)
+function Counter:del(...)
+  local label_values = init_tmp_tab(...)
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)
@@ -136,9 +148,10 @@ local Gauge = Metric:new()
 --
 -- Args:
 --   value: (number) a value to set the gauge to. Should be defined.
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Gauge:set(value, label_values)
+function Gauge:set(value, ...)
+  local label_values = init_tmp_tab(...)
   if value == nil then
     self.prometheus:log_error("No value passed for " .. self.name)
     return
@@ -154,9 +167,10 @@ end
 -- Delete a given gauge
 --
 -- Args:
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Gauge:del(label_values)
+function Gauge:del(...)
+  local label_values = init_tmp_tab(...)
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)
@@ -177,9 +191,10 @@ end
 -- Args:
 --   value: (number) a value to add to the gauge (a negative value when you
 --     need to decrease the value of the gauge). Defaults to 1 if skipped.
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Gauge:inc(value, label_values)
+function Gauge:inc(value, ...)
+  local label_values = init_tmp_tab(...)
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)
@@ -193,9 +208,10 @@ local Histogram = Metric:new()
 --
 -- Args:
 --   value: (number) a value to record. Should be defined.
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: an array of label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Histogram:observe(value, label_values)
+function Histogram:observe(value, ...)
+  local label_values = init_tmp_tab(...)
   if value == nil then
     self.prometheus:log_error("No value passed for " .. self.name)
     return

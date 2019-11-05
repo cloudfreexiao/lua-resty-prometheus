@@ -1,9 +1,9 @@
 package = "lua-resty-prometheus"
-version = "0.1"
+version = "1.0-0"
 
 source = {
   url = "git://github.com/iresty/lua-resty-prometheus.git",
-  tag = "v0.1",
+  tag = "1.0",
 }
 
 description = {

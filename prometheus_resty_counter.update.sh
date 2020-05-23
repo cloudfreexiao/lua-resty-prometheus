@@ -7,4 +7,4 @@
 
 set -exu
 URL='https://raw.githubusercontent.com/Kong/lua-resty-counter/master/lib/resty/counter.lua'
-curl -s ${URL} > prometheus_resty_counter.lua
+curl -s ${URL} > prometheus_counter.lua

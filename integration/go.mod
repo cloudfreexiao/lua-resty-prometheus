@@ -1,4 +1,4 @@
-module github.com/knyar/nginx-lua-prometheus/integration
+module github.com/cloudfreexiao/skynet-prometheus/integration
 
 go 1.14
 

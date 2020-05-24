@@ -16,14 +16,14 @@
 -- metric names (i.e. metric name along with all labels) so that they meet
 -- those requirements while being sorted alphabetically. In particular:
 --
---  * all labels for a given metric are presented in reproducible order (the one
+--  all labels for a given metric are presented in reproducible order (the one
 --    used when labels were declared). "le" label for histogram metrics always
 --    goes last;
---  * bucket boundaries (which are exposed as values of the "le" label) are
+--  bucket boundaries (which are exposed as values of the "le" label) are
 --    presented as floating point numbers with leading and trailing zeroes.
 --    Number of of zeroes is determined for each bucketer automatically based on
 --    bucket boundaries;
---  * internally "+Inf" bucket is stored as "Inf" (to make it appear after
+--  internally "+Inf" bucket is stored as "Inf" (to make it appear after
 --    all numeric buckets), and gets replaced by "+Inf" just before we
 --    expose the metrics.
 --
@@ -110,7 +110,8 @@ local function full_metric_name(name, label_names, label_values)
     local label_parts = {}
     for idx, key in ipairs(label_names) do
         local label_value =
-            (string.format("%s", label_values[idx]):gsub("[^\032-\126]", ""):gsub("\\", "\\\\"):gsub('"', '\\"')) -- strip non-printable characters
+            (string.format("%s", label_values[idx]):gsub("[^\032-\126]", ""):gsub("\\", "\\\\"):gsub('"', '\\"'))
+        -- strip non-printable characters
         table.insert(label_parts, key .. '="' .. label_value .. '"')
     end
     return name .. "{" .. table.concat(label_parts, ",") .. "}"
@@ -506,9 +507,9 @@ end
 --
 -- Returns:
 --   an object that should be used to register metrics.
-function Prometheus.init(dict_name, options_or_prefix)
+function Prometheus.init(conf)
     local self = setmetatable({}, mt)
-    dict_name = dict_name or "prometheus_metrics"
+    local dict_name = conf.dict_name or "skynet_metrics"
     self.dict_name = dict_name
     self.dict = shared.new(dict_name)
     if self.dict == nil then
@@ -519,12 +520,13 @@ function Prometheus.init(dict_name, options_or_prefix)
         )
     end
 
+    local options_or_prefix = conf.options_or_prefix
     if type(options_or_prefix) == "table" then
-        self.prefix = options_or_prefix.prefix or ""
+        self.prefix = options_or_prefix.prefix or "skynet"
         self.error_metric_name = options_or_prefix.error_metric_name or DEFAULT_ERROR_METRIC_NAME
         self.sync_interval = options_or_prefix.sync_interval or DEFAULT_SYNC_INTERVAL
     else
-        self.prefix = options_or_prefix or ""
+        self.prefix = options_or_prefix or "skynet"
         self.error_metric_name = DEFAULT_ERROR_METRIC_NAME
         self.sync_interval = DEFAULT_SYNC_INTERVAL
     end
@@ -541,6 +543,7 @@ function Prometheus.init(dict_name, options_or_prefix)
         self:log_error(err)
     end
 
+    self:init_worker()
     return self
 end
 
@@ -602,7 +605,7 @@ local function register(self, name, help, label_names, buckets, typ)
             (typ == TYPE_HISTOGRAM and
                 (self.registry[name] or self.registry[name .. "_count"] or self.registry[name .. "_sum"] or
                     self.registry[name .. "_bucket"]))
-    then
+     then
         self:log_error("Duplicate metric " .. name)
         return
     end
@@ -676,7 +679,7 @@ end
 function Prometheus:metric_data()
     if not self.initialized then
         self:log_error("Prometheus module has not been initialized")
-        return
+        return {}
     end
 
     -- Force a manual sync of counter local state (mostly to make tests work).
@@ -728,15 +731,14 @@ end
 -- It will get the metrics from the dictionary, sort them, and expose them
 -- aling with TYPE and HELP comments.
 function Prometheus:collect()
-    -- TODO: 设置 header 为 "text/plain"
-    -- ngx.header.content_type = "text/plain"
-    self:log_error(self:metric_data())
+    return self:metric_data()
 end
 
 -- Log an error, incrementing the error counter.
 function Prometheus:log_error(...)
     skynet.error(...)
     self.dict:incr(self.error_metric_name, 1, 0)
+    assert(false)
 end
 
 -- Log an error that happened while setting up a dictionary key.

@@ -45,7 +45,7 @@ local function sync(_, self)
 end
 
 function _M.new(shdict_name, sync_interval)
-    if not shared[shdict_name] then
+    if not shared.get(shdict_name) then
         error('shared dict "' .. (shdict_name or "nil") .. '" not defined', 2)
     end
 
@@ -68,16 +68,14 @@ function _M.new(shdict_name, sync_interval)
             error("expect sync_interval to be a positive number", 2)
         end
         if not timer_started[shdict_name] then
-            -- TODO: 增加 定时器逻辑
             skynet.fork(
                 function()
                     while true do
-                        sync(self)
+                        sync(true, self)
                         skynet.sleep(sync_interval * 100)
                     end
                 end
             )
-            -- ngx.timer.every(sync_interval, sync, self)
             timer_started[shdict_name] = true
         end
     end

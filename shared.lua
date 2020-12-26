@@ -36,7 +36,7 @@ function mt:incr(key, num)
     if v then
         self.data[key] = v + num
     else
-        self.data[key] = v
+        self.data[key] = num
     end
 end
 
@@ -49,7 +49,7 @@ function mt:add(key, value, exptime, flags)
     if v then
         self.data[key] = v + value
     else
-        self.data[key] = v
+        self.data[key] = value
     end
 end
 
